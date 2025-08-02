@@ -1,46 +1,46 @@
 <script setup lang="ts">
-import { useForm, router } from '@inertiajs/vue3'
+import type { Pagination } from '@/types/pagination';
+import { router, useForm } from '@inertiajs/vue3';
 
-defineProps<{
-    users: { id: number; name: string; email: string }[]
-    filters: { search?: string }
-}>()
+const props = defineProps<{
+    users: Pagination<User>;
+    filters: { search?: string };
+}>();
+
+type User = {
+    id: number;
+    name: string;
+    email: string;
+};
 
 const form = useForm({
-    search: '',
-})
+    search: props.filters.search || '',
+});
 
 function submit() {
-    router.get('/users', { search: form.search }, { preserveState: true })
+    form.get(route('users.index'), {
+        preserveScroll: true,
+        preserveState: true,
+    });
+}
+
+function go(url: string | null) {
+    if (url) {
+        router.visit(url);
+    }
 }
 </script>
 
 <template>
-    <div class="p-6">
-        <h1 class="text-2xl font-bold mb-4">Пользователи</h1>
+    <div>
+        <h1 class="mb-4 text-2xl font-bold">Users</h1>
 
-        <div class="mb-4 flex gap-2">
-            <input
-                v-model="form.search"
-                @keyup.enter="submit"
-                type="text"
-                class="border rounded px-3 py-1 w-64"
-                placeholder="Поиск по имени"
-            />
-            <button @click="submit" class="bg-blue-500 text-white px-4 py-1 rounded">
-                Найти
-            </button>
-        </div>
+        <input v-model="form.search" @input="submit" type="text" placeholder="Search users..." class="mb-4 rounded border p-2" />
 
-        <div class="grid gap-4">
-            <div
-                v-for="user in users"
-                :key="user.id"
-                class="p-4 border rounded shadow-sm bg-white"
-            >
-                <div class="font-semibold">{{ user.name }}</div>
-                <div class="text-sm text-gray-500">{{ user.email }}</div>
-            </div>
-        </div>
+        <ul>
+            <li v-for="user in users.data" :key="user.id">{{ user.name }} — {{ user.email }}</li>
+        </ul>
+
+        <button v-for="link in users.links" :key="link.label" :disabled="!link.url" @click="go(link.url)" class="mx-1" v-html="link.label" />
     </div>
 </template>
