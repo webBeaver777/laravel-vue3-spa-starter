@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import AppLayout from '@/layouts/AppLayout.vue';
 import type { Pagination } from '@/types/pagination';
 import { router, useForm } from '@inertiajs/vue3';
+
+defineOptions({ layout: AppLayout });
 
 const props = defineProps<{
     users: Pagination<User>;
