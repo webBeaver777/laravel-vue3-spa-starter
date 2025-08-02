@@ -1,49 +1,91 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
-import type { Pagination } from '@/types/pagination';
-import { router, useForm } from '@inertiajs/vue3';
-
-defineOptions({ layout: AppLayout });
-
-const props = defineProps<{
-    users: Pagination<User>;
-    filters: { search?: string };
-}>();
+import { useUsersStore } from '@/stores/users'
+import { router, usePage } from '@inertiajs/vue3'
+import { onMounted, watch } from 'vue'
 
 type User = {
-    id: number;
-    name: string;
-    email: string;
-};
-
-const form = useForm({
-    search: props.filters.search || '',
-});
-
-function submit() {
-    form.get(route('users.index'), {
-        preserveScroll: true,
-        preserveState: true,
-    });
+    id: number
+    name: string
+    email: string
 }
 
-function go(url: string | null) {
-    if (url) {
-        router.visit(url);
+const store = useUsersStore()
+const page = usePage<any>() // убираем строгую типизацию
+
+onMounted(() => {
+    store.setUsers(page.props.users.data)
+    store.setFilters(page.props.filters)
+})
+
+watch(
+    () => store.filters.search,
+    (search) => {
+        router.get(
+            route('users.index'),
+            { search },
+            {
+                preserveState: true,
+                replace: true,
+                onSuccess: (newPage: any) => {
+                    store.setUsers(newPage.props.users.data)
+                }
+            }
+        )
     }
+)
+
+function goToPage(pageNumber: number) {
+    router.get(
+        route('users.index'),
+        { search: store.filters.search, page: pageNumber },
+        {
+            preserveState: true,
+            replace: true,
+            onSuccess: (newPage: any) => {
+                store.setUsers(newPage.props.users.data)
+            }
+        }
+    )
 }
 </script>
 
 <template>
     <div>
-        <h1 class="mb-4 text-2xl font-bold">Users</h1>
+        <h1 class="text-2xl font-bold mb-4">Users</h1>
 
-        <input v-model="form.search" @input="submit" type="text" placeholder="Search users..." class="mb-4 rounded border p-2" />
+        <input
+            v-model="store.filters.search"
+            type="text"
+            placeholder="Search..."
+            class="border p-2 mb-4"
+        />
 
-        <ul>
-            <li v-for="user in users.data" :key="user.id">{{ user.name }} — {{ user.email }}</li>
-        </ul>
+        <table class="w-full border">
+            <thead>
+            <tr>
+                <th class="p-2 border">#</th>
+                <th class="p-2 border">Name</th>
+                <th class="p-2 border">Email</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="user in store.users" :key="user.id">
+                <td class="p-2 border">{{ user.id }}</td>
+                <td class="p-2 border">{{ user.name }}</td>
+                <td class="p-2 border">{{ user.email }}</td>
+            </tr>
+            </tbody>
+        </table>
 
-        <button v-for="link in users.links" :key="link.label" :disabled="!link.url" @click="go(link.url)" class="mx-1" v-html="link.label" />
+        <div class="mt-4 flex gap-2">
+            <button
+                v-for="n in page.props.users.last_page"
+                :key="n"
+                :class="['px-3 py-1 border', n === page.props.users.current_page ? 'bg-blue-500 text-white' : '']"
+                @click="goToPage(n)"
+            >
+                {{ n }}
+            </button>
+        </div>
     </div>
 </template>
